@@ -1,0 +1,28 @@
+# Local measurements and research artifacts
+captures/
+AFTER_THE_FALL_PERF_NOTES.md
+
+# Built packages and extracted dependencies
+dist/
+downloads/
+vendor/
+
+# Build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+*.dll
+*.exe
+*.zip
+
+# Logs
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.user
+*.suo
+.vs/
+.vscode/
