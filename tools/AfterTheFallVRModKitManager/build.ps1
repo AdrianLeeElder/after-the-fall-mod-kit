@@ -1,5 +1,6 @@
-﻿param(
-    [string]$Configuration = 'Release'
+param(
+    [string]$Configuration = 'Release',
+    [string]$EmbeddedPayloadZip
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +17,15 @@ if (-not (Test-Path -LiteralPath $csc)) {
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
+$resourceArgs = @()
+if ($EmbeddedPayloadZip) {
+    if (-not (Test-Path -LiteralPath $EmbeddedPayloadZip)) {
+        throw "Embedded payload zip not found: $EmbeddedPayloadZip"
+    }
+
+    $resourceArgs += "/resource:$EmbeddedPayloadZip,AfterTheFallVRModKit.Payload.zip"
+}
+
 & $csc `
     /nologo `
     /target:winexe `
@@ -24,7 +34,9 @@ New-Item -ItemType Directory -Force -Path $outDir | Out-Null
     /reference:System.dll `
     /reference:System.Core.dll `
     /reference:System.Drawing.dll `
+    /reference:System.IO.Compression.dll `
     /reference:System.Windows.Forms.dll `
+    $resourceArgs `
     $src
 
 if ($LASTEXITCODE -ne 0) {

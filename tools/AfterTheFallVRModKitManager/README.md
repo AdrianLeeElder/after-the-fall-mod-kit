@@ -18,3 +18,5 @@ Build:
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\AfterTheFallVRModKitManager\build.ps1
 ```
+
+For release builds, pass `-EmbeddedPayloadZip` to embed the installer payload into the exe.

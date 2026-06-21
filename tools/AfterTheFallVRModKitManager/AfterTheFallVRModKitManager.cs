@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
+using System.Reflection;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -28,6 +31,7 @@ namespace AfterTheFallVRModKit.Manager
         private const string PluginGuid = "local.afterthefall.vrmodkit";
         private const string PluginFileName = "AfterTheFallVRModKit.dll";
         private const string PluginDisabledFileName = "AfterTheFallVRModKit.dll.disabled";
+        private const string EmbeddedPayloadResourceName = "AfterTheFallVRModKit.Payload.zip";
 
         private readonly TextBox gamePathText;
         private readonly Label statusLabel;
@@ -45,6 +49,7 @@ namespace AfterTheFallVRModKit.Manager
         private readonly Button openFolderButton;
         private readonly Button launchButton;
         private readonly Button adminButton;
+        private static string payloadDir;
 
         public MainForm()
         {
@@ -717,7 +722,109 @@ namespace AfterTheFallVRModKit.Manager
 
         private static string PayloadDir()
         {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "payload");
+            if (!string.IsNullOrEmpty(payloadDir))
+            {
+                return payloadDir;
+            }
+
+            var externalPayload = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "payload");
+            if (Directory.Exists(externalPayload) && File.Exists(Path.Combine(externalPayload, PluginFileName)))
+            {
+                payloadDir = externalPayload;
+                return payloadDir;
+            }
+
+            var embeddedPayload = ExtractEmbeddedPayload();
+            payloadDir = string.IsNullOrEmpty(embeddedPayload) ? externalPayload : embeddedPayload;
+            return payloadDir;
+        }
+
+        private static string ExtractEmbeddedPayload()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            using (var stream = assembly.GetManifestResourceStream(EmbeddedPayloadResourceName))
+            {
+                if (stream == null)
+                {
+                    return null;
+                }
+
+                byte[] payloadBytes;
+                using (var memory = new MemoryStream())
+                {
+                    stream.CopyTo(memory);
+                    payloadBytes = memory.ToArray();
+                }
+
+                var root = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "AfterTheFallVRModKit",
+                    "payload");
+                var marker = Path.Combine(root, ".payload-version");
+                var stamp = EmbeddedPayloadResourceName + ":" + ComputeSha256(payloadBytes);
+
+                if (Directory.Exists(root) && File.Exists(marker) && string.Equals(File.ReadAllText(marker), stamp, StringComparison.Ordinal))
+                {
+                    return root;
+                }
+
+                if (Directory.Exists(root))
+                {
+                    Directory.Delete(root, true);
+                }
+
+                Directory.CreateDirectory(root);
+                using (var payloadStream = new MemoryStream(payloadBytes))
+                {
+                    ExtractZipStream(payloadStream, root);
+                }
+
+                File.WriteAllText(marker, stamp);
+                return root;
+            }
+        }
+
+        private static string ComputeSha256(byte[] bytes)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                return Convert.ToBase64String(sha256.ComputeHash(bytes));
+            }
+        }
+
+        private static void ExtractZipStream(Stream stream, string destinationRoot)
+        {
+            var destinationFullPath = Path.GetFullPath(destinationRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    var targetPath = Path.GetFullPath(Path.Combine(destinationRoot, entry.FullName));
+                    if (!targetPath.StartsWith(destinationFullPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException("Embedded payload contains an invalid path: " + entry.FullName);
+                    }
+
+                    if (string.IsNullOrEmpty(entry.Name))
+                    {
+                        Directory.CreateDirectory(targetPath);
+                        continue;
+                    }
+
+                    var targetDirectory = Path.GetDirectoryName(targetPath);
+                    if (!string.IsNullOrEmpty(targetDirectory))
+                    {
+                        Directory.CreateDirectory(targetDirectory);
+                    }
+
+                    using (var input = entry.Open())
+                    using (var output = File.Create(targetPath))
+                    {
+                        input.CopyTo(output);
+                    }
+                }
+            }
         }
 
         private static string StateFromFiles(string active, string disabled)

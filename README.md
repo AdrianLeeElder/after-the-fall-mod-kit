@@ -19,11 +19,10 @@ This repository contains:
 
 ## End User Install
 
-1. Download a packaged release zip.
-2. Extract it outside the game folder.
-3. Run `AfterTheFallVRModKitManager.exe`.
-4. If Windows blocks writes to the Steam folder, click `Restart as Admin`.
-5. Pick the desired toggles and click `Apply`.
+1. Download `AfterTheFallVRModKitInstaller.exe` from the latest GitHub Release.
+2. Run the exe.
+3. If Windows blocks writes to the Steam folder, click `Restart as Admin`.
+4. Pick the desired toggles and click `Apply`.
 
 Close After The Fall before applying file changes. Feature settings take effect the next time the game starts.
 
@@ -47,7 +46,21 @@ Build a distributable package:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-AfterTheFallVRModKitPackage.ps1
 ```
 
-The package script expects a local BepInEx IL2CPP payload under `downloads\bepinex_extract`. It can also bundle vrperfkit files from an existing game install when `dxgi.dll` and `vrperfkit.yml` are present.
+The package script emits:
+
+- `dist\AfterTheFallVRModKitInstaller.exe`
+- `dist\AfterTheFallVRModKit.zip`
+
+The installer exe embeds the plugin and BepInEx payload, so end users only need to run the exe. The package script expects a local BepInEx IL2CPP payload under `downloads\bepinex_extract`. It can also bundle vrperfkit files from an existing game install when `dxgi.dll` and `vrperfkit.yml` are present.
+
+## Release Builds
+
+Pushing a tag that starts with `v` runs the release workflow and attaches the single-file installer to a GitHub Release:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ## Project Layout
 

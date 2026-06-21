@@ -3,11 +3,10 @@ After The Fall VR Mod Kit
 
 Maintained by DonkeySlayer.
 
-1. Extract the whole zip somewhere outside the game folder.
-2. Run AfterTheFallVRModKitManager.exe.
-3. If Windows blocks writes to the Steam folder, click "Restart as Admin".
-4. Confirm the game folder points at the folder containing AfterTheFall.exe.
-5. Choose the toggles you want and click Apply.
+1. Run AfterTheFallVRModKitInstaller.exe.
+2. If Windows blocks writes to the Steam folder, click "Restart as Admin".
+3. Confirm the game folder points at the folder containing AfterTheFall.exe.
+4. Choose the toggles you want and click Apply.
 
 Close After The Fall before applying changes.
 
