@@ -22,7 +22,13 @@ Toggles:
   Disables the game's own VOIP handlers. Use Discord or another voice chat.
 
 - Suppress client blood/gore visuals
-  Disables client-side blood, decal, gib, and mutilation visual handlers.
+  Disables client-side blood, decal, gib, mutilation, and known blood particle effects.
+
+- Doorbell wave sound
+  Replaces the harsh horde wave-start screech with a short ding dong doorbell tone.
+
+- Nephew Mode
+  PC-only cosmetic mode that makes enemies look less scary with a bland plastic skin while keeping game hitboxes and behavior intact.
 
 - Clean retained ServerGame on hub return
   Experimental cleanup for the ServerGame memory leak reported by the game after horde.
@@ -30,8 +36,11 @@ Toggles:
 - vrperfkit injection
   Enables or disables dxgi.dll based vrperfkit injection when bundled or already installed.
 
-- ADB Status / Patch Quest APK
-  Detects a connected Quest, pulls the installed Quest APK, and checks whether known IL2CPP patch targets are present. APK modification and reinstall are not enabled yet.
+- Set network disconnect timeout
+  Adds or removes Steam launch option -disconnectTimeout. The default 30 second setting writes -disconnectTimeout 30000.
+
+- ADB Status / Create Quest OBB / Install Quest OBB
+  Detects a connected Quest, builds an OBB-only V2 blood/decal/gore tuning patch for the verified Quest release, and can install it through ADB. Installation reuses the newest cached patched OBB when possible and skips the push when the headset already matches it. It backs up the current headset OBB before replacing it. Long OBB pulls and pushes show percent, speed, and ETA. The APK is not modified. PC Nephew Mode visuals are runtime hooks and are not part of the Quest OBB patch.
 
 Feature toggles are written to:
 
