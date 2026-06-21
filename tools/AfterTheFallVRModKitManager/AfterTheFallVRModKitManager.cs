@@ -48,6 +48,8 @@ namespace AfterTheFallVRModKit.Manager
         private readonly Button browseButton;
         private readonly Button openFolderButton;
         private readonly Button launchButton;
+        private readonly Button adbStatusButton;
+        private readonly Button patchQuestApkButton;
         private readonly Button adminButton;
         private static string payloadDir;
 
@@ -189,6 +191,20 @@ namespace AfterTheFallVRModKit.Manager
             launchButton.Height = 32;
             launchButton.Click += delegate { LaunchGame(); };
             actionPanel.Controls.Add(launchButton);
+
+            adbStatusButton = new Button();
+            adbStatusButton.Text = "ADB Status";
+            adbStatusButton.AutoSize = true;
+            adbStatusButton.Height = 32;
+            adbStatusButton.Click += delegate { ShowAdbStatus(); };
+            actionPanel.Controls.Add(adbStatusButton);
+
+            patchQuestApkButton = new Button();
+            patchQuestApkButton.Text = "Patch Quest APK";
+            patchQuestApkButton.AutoSize = true;
+            patchQuestApkButton.Height = 32;
+            patchQuestApkButton.Click += delegate { PatchQuestApk(); };
+            actionPanel.Controls.Add(patchQuestApkButton);
 
             adminButton = new Button();
             adminButton.Text = "Restart as Admin";
@@ -551,6 +567,141 @@ namespace AfterTheFallVRModKit.Manager
             Process.Start("steam://rungameid/" + AppId);
         }
 
+        private void ShowAdbStatus()
+        {
+            try
+            {
+                var adb = FindAdb();
+                var devices = RunProcess(adb, "devices -l", 15000);
+                Log("ADB devices:");
+                Log(devices.Trim());
+
+                var packagePath = RunProcess(adb, "shell pm path com.vertigogames.atf", 15000).Trim();
+                if (packagePath.Length == 0)
+                {
+                    Log("Quest package com.vertigogames.atf was not found.");
+                    MessageBox.Show(this, "ADB is available, but com.vertigogames.atf was not found on the connected device.", "ADB Status", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var details = RunProcess(adb, "shell dumpsys package com.vertigogames.atf", 15000);
+                Log("Quest package path: " + packagePath);
+                foreach (var line in details.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (line.IndexOf("versionName", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        line.IndexOf("versionCode", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        line.IndexOf("primaryCpuAbi", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        Log(line.Trim());
+                    }
+                }
+
+                MessageBox.Show(this, "ADB is connected and com.vertigogames.atf was found.", "ADB Status", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                Log("ADB status failed: " + ex.Message);
+                MessageBox.Show(this, ex.Message, "ADB Status failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void PatchQuestApk()
+        {
+            try
+            {
+                var report = RunQuestApkPreflight();
+                Log(report);
+                MessageBox.Show(this, report, "Quest APK Patch Preflight", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                Log("Quest APK preflight failed: " + ex.Message);
+                MessageBox.Show(this, ex.Message, "Quest APK Patch failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private string RunQuestApkPreflight()
+        {
+            var adb = FindAdb();
+            var devices = RunProcess(adb, "devices -l", 15000);
+            if (devices.IndexOf("\tdevice", StringComparison.OrdinalIgnoreCase) < 0 && devices.IndexOf(" device ", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                throw new InvalidOperationException("No authorized ADB device was found. Connect the Quest and accept the USB debugging prompt.");
+            }
+
+            var pathOutput = RunProcess(adb, "shell pm path com.vertigogames.atf", 15000).Trim();
+            if (!pathOutput.StartsWith("package:", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("com.vertigogames.atf was not found on the connected Quest.");
+            }
+
+            var remoteApk = pathOutput.Substring("package:".Length).Trim();
+            var outputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "AfterTheFallVRModKit", "quest-apk");
+            Directory.CreateDirectory(outputDir);
+            var localApk = Path.Combine(outputDir, "com.vertigogames.atf-base.apk");
+            RunProcess(adb, "pull \"" + remoteApk + "\" \"" + localApk + "\"", 120000);
+
+            var report = InspectQuestApk(localApk);
+            return "Pulled Quest APK to:\r\n" + localApk + "\r\n\r\n" + report + "\r\n\r\nAutomatic APK binary patching is not enabled yet. The Quest build is Android IL2CPP, so matching the PC mod requires ARM64 libil2cpp patching plus APK resign/reinstall handling.";
+        }
+
+        private static string InspectQuestApk(string apkPath)
+        {
+            var requiredEntries = new[]
+            {
+                "lib/arm64-v8a/libil2cpp.so",
+                "lib/arm64-v8a/libunity.so",
+                "assets/bin/Data/Managed/Metadata/global-metadata.dat"
+            };
+
+            var targetPatterns = new[]
+            {
+                "BloodPainter",
+                "ServerGame",
+                "ClientSceneManager",
+                "FmodVoipRecorder",
+                "VoipClient",
+                "VoipRemotePeer",
+                "ZombieMutilationView",
+                "ZombieBloodMaskPainter",
+                "ClientEnemyNetworking",
+                "HandleEnemyGibNetworkMessage"
+            };
+
+            using (var archive = ZipFile.OpenRead(apkPath))
+            {
+                var builder = new StringBuilder();
+                builder.AppendLine("APK inspection:");
+                foreach (var entryName in requiredEntries)
+                {
+                    builder.AppendLine("- " + entryName + ": " + (archive.GetEntry(entryName) == null ? "missing" : "present"));
+                }
+
+                var metadataEntry = archive.GetEntry("assets/bin/Data/Managed/Metadata/global-metadata.dat");
+                if (metadataEntry == null)
+                {
+                    return builder.ToString();
+                }
+
+                string metadataText;
+                using (var input = metadataEntry.Open())
+                using (var memory = new MemoryStream())
+                {
+                    input.CopyTo(memory);
+                    metadataText = Encoding.UTF8.GetString(memory.ToArray());
+                }
+
+                builder.AppendLine();
+                builder.AppendLine("Known target metadata:");
+                foreach (var pattern in targetPatterns)
+                {
+                    builder.AppendLine("- " + pattern + ": " + (metadataText.IndexOf(pattern, StringComparison.Ordinal) >= 0 ? "present" : "missing"));
+                }
+
+                return builder.ToString();
+            }
+        }
+
         private void RestartAsAdmin()
         {
             try
@@ -574,6 +725,83 @@ namespace AfterTheFallVRModKit.Manager
             adminLabel.Text = admin ? "Administrator" : "Standard user";
             adminLabel.ForeColor = admin ? Color.DarkGreen : Color.DarkOrange;
             adminButton.Visible = !admin;
+        }
+
+        private static string FindAdb()
+        {
+            var candidates = new List<string>
+            {
+                "adb.exe",
+                @"C:\adb\adb.exe"
+            };
+
+            var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            foreach (var directory in path.Split(Path.PathSeparator))
+            {
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    candidates.Add(Path.Combine(directory.Trim(), "adb.exe"));
+                }
+            }
+
+            foreach (var candidate in candidates)
+            {
+                try
+                {
+                    if (string.Equals(candidate, "adb.exe", StringComparison.OrdinalIgnoreCase) || File.Exists(candidate))
+                    {
+                        RunProcess(candidate, "version", 5000);
+                        return candidate;
+                    }
+                }
+                catch
+                {
+                    // Try the next common ADB location.
+                }
+            }
+
+            throw new FileNotFoundException("ADB was not found. Install Android platform tools or place adb.exe at C:\\adb\\adb.exe.");
+        }
+
+        private static string RunProcess(string fileName, string arguments, int timeoutMilliseconds)
+        {
+            var start = new ProcessStartInfo(fileName, arguments);
+            start.UseShellExecute = false;
+            start.RedirectStandardOutput = true;
+            start.RedirectStandardError = true;
+            start.CreateNoWindow = true;
+
+            using (var process = Process.Start(start))
+            {
+                if (process == null)
+                {
+                    throw new InvalidOperationException("Could not start " + fileName + ".");
+                }
+
+                var outputTask = process.StandardOutput.ReadToEndAsync();
+                var errorTask = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(timeoutMilliseconds))
+                {
+                    try
+                    {
+                        process.Kill();
+                    }
+                    catch
+                    {
+                    }
+
+                    throw new TimeoutException(fileName + " timed out.");
+                }
+
+                var output = outputTask.Result;
+                var error = errorTask.Result;
+                if (process.ExitCode != 0)
+                {
+                    throw new InvalidOperationException(fileName + " failed with exit code " + process.ExitCode + ": " + error.Trim());
+                }
+
+                return string.IsNullOrEmpty(error) ? output : output + Environment.NewLine + error;
+            }
         }
 
         private static bool IsAdministrator()

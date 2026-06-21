@@ -12,6 +12,7 @@ It can:
   - `SuppressClientBloodAndGore`
   - `CleanupRetainedServerGame`
 - Toggle vrperfkit when `dxgi.dll` / `dxgi.dll.disabled` is present, or install it when a package payload is bundled.
+- Check ADB status and run a Quest APK preflight for `com.vertigogames.atf`.
 
 Build:
 

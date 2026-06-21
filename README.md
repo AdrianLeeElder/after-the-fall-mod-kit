@@ -16,6 +16,7 @@ This repository contains:
 - Suppress client-side blood, decal, gib, and mutilation visual handlers.
 - Run an experimental retained `ServerGame` cleanup after returning to the hub.
 - Toggle BepInEx and vrperfkit by enabling or disabling their loader DLLs.
+- Detect a connected Quest through ADB and inspect the installed Quest APK for matching IL2CPP patch targets.
 
 ## End User Install
 
@@ -84,6 +85,17 @@ DisableInGameVoip = true
 SuppressClientBloodAndGore = true
 CleanupRetainedServerGame = true
 ```
+
+## Quest APK Support
+
+The manager includes `ADB Status` and `Patch Quest APK` buttons. The current Quest path is a safe preflight:
+
+- Detects an authorized ADB device.
+- Finds the Quest package `com.vertigogames.atf`.
+- Pulls the base APK into the user's Documents folder.
+- Confirms the APK is Unity IL2CPP and checks for the same target names used by the PC plugin.
+
+It does not yet modify, sign, or reinstall the APK. The Quest build requires Android ARM64 `libil2cpp.so` patching, then APK resign/reinstall handling. That should be treated carefully because changing the APK signature can affect store updates, saved data, entitlement checks, and online play.
 
 ## Notes
 

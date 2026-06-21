@@ -30,6 +30,9 @@ Toggles:
 - vrperfkit injection
   Enables or disables dxgi.dll based vrperfkit injection when bundled or already installed.
 
+- ADB Status / Patch Quest APK
+  Detects a connected Quest, pulls the installed Quest APK, and checks whether known IL2CPP patch targets are present. APK modification and reinstall are not enabled yet.
+
 Feature toggles are written to:
 
 BepInEx\config\local.afterthefall.vrmodkit.cfg
