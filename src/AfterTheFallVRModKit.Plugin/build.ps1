@@ -9,6 +9,7 @@ $src = Join-Path $root 'AfterTheFallVRModKitPlugin.cs'
 $outDir = Join-Path $root 'bin'
 $out = Join-Path $outDir 'AfterTheFallVRModKit.dll'
 $core = Join-Path $GameRoot 'BepInEx\core'
+$interop = Join-Path $GameRoot 'BepInEx\interop'
 $dotnet = Join-Path $GameRoot 'dotnet'
 $csc = 'C:\Program Files\dotnet\sdk\3.1.101\Roslyn\bincore\csc.dll'
 
@@ -48,7 +49,14 @@ $refs = @(
     (Join-Path $dotnet 'netstandard.dll'),
     (Join-Path $core 'BepInEx.Core.dll'),
     (Join-Path $core 'BepInEx.Unity.IL2CPP.dll'),
-    (Join-Path $core '0Harmony.dll')
+    (Join-Path $core '0Harmony.dll'),
+    (Join-Path $core 'Il2CppInterop.Runtime.dll'),
+    (Join-Path $interop 'Il2Cppmscorlib.dll'),
+    (Join-Path $interop 'UnityEngine.AudioModule.dll'),
+    (Join-Path $interop 'UnityEngine.CoreModule.dll'),
+    (Join-Path $interop 'UnityEngine.PhysicsModule.dll'),
+    (Join-Path $interop 'Unity.Collections.dll'),
+    (Join-Path $interop 'Unity.Mathematics.dll')
 )
 
 foreach ($ref in $refs) {

@@ -6,6 +6,8 @@ Current feature flags:
 
 - `DisableInGameVoip`
 - `SuppressClientBloodAndGore`
+- `DoorbellWaveSound`
+- `ComfortEnemyVisuals` for Nephew Mode
 - `CleanupRetainedServerGame`
 
 The plugin config is written by the manager to:
