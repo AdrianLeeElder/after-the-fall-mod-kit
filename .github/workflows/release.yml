@@ -22,7 +22,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path downloads | Out-Null
           $zip = Join-Path $PWD 'downloads\BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.757+77d438c.zip'
-          $url = 'https://github.com/BepInEx/BepInEx/releases/download/v6.0.0-be.757%2B77d438c/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.757%2B77d438c.zip'
+          $url = 'https://builds.bepinex.dev/projects/bepinex_be/757/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.757%2B77d438c.zip'
           Invoke-WebRequest -Uri $url -OutFile $zip
           Expand-Archive -Path $zip -DestinationPath downloads\bepinex_extract -Force
 
