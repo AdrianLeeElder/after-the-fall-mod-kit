@@ -50,6 +50,7 @@ namespace AfterTheFallVRModKit.Manager
         private const string QuestObbBackupRoot = "/sdcard/Download/AfterTheFallVRModKit";
         private const string QuestObbName = "main.38148.com.vertigogames.atf.obb";
         private const string QuestBloodlessObbName = "main.38148.com.vertigogames.atf.bloodless.obb";
+        private const string QuestObbPatchProfile = "bloodless-v3";
         private const string QuestObbRemotePath = QuestObbDirectory + "/" + QuestObbName;
 
         private readonly TextBox gamePathText;
@@ -89,6 +90,11 @@ namespace AfterTheFallVRModKit.Manager
         {
             "assets/bin/Data/34371bffbaebc5b43be10f0d2ca3d2f0",
             "assets/bin/Data/5f8e8990ebe7b194c9b3f71f884e565d"
+        };
+        private static readonly string[] QuestZombieSkinCollectionObbEntries = new[]
+        {
+            "assets/bin/Data/20d7b4b282b28ea43aa03ab4dddd00f0",
+            "assets/bin/Data/998e200d03c67f34b90e8ca5b36a7991"
         };
         private static readonly string[] QuestImpactSettingsObbEntries = new[]
         {
@@ -1189,7 +1195,7 @@ namespace AfterTheFallVRModKit.Manager
                 return;
             }
 
-            var warning = "This will pull the installed Quest OBB, patch a local copy of the blood/decal tuning data, and leave the official APK untouched.\r\n\r\n" +
+            var warning = "This will pull the installed Quest OBB, patch a local copy of the blood/decal tuning data plus Quest Nephew Mode skin tint data, and leave the official APK untouched.\r\n\r\n" +
                 "It will not install anything on the headset.\r\n\r\n" +
                 "Continue and create a patched OBB file?";
             if (MessageBox.Show(this, warning, "Create Quest OBB", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK)
@@ -1222,7 +1228,8 @@ namespace AfterTheFallVRModKit.Manager
             }
 
             var warning = "This will patch and install the Quest OBB only.\r\n\r\n" +
-                "The manager will reuse the newest local patched OBB when possible. If no patched OBB exists, it will pull the current OBB, patch blood/decal tuning data, back up the current headset OBB to /sdcard/Download/AfterTheFallVRModKit/obb-backup, and push the patched OBB back.\r\n\r\n" +
+                "The manager will reuse the newest local patched OBB for the current patch profile when possible. If no patched OBB exists, it will pull the current OBB, patch blood/decal tuning data plus Quest Nephew Mode skin tint data, back up the current headset OBB to /sdcard/Download/AfterTheFallVRModKit/obb-backup, and push the patched OBB back.\r\n\r\n" +
+                "It verifies installed OBB contents with SHA-256 when the headset supports it; matching file size alone is not treated as installed.\r\n\r\n" +
                 "It does not uninstall or re-sign the APK. Continue?";
 
             if (MessageBox.Show(this, warning, "Install Quest OBB", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK)
@@ -1278,11 +1285,11 @@ namespace AfterTheFallVRModKit.Manager
 
         private QuestObbPatchResult EnsurePatchedQuestObbForInstall(IProgress<string> progress)
         {
-            progress.Report("Looking for cached patched Quest OBB...");
+            progress.Report("Looking for cached patched Quest OBB for " + QuestObbPatchProfile + "...");
             var cachedPatchedObb = TryFindLatestPatchedQuestObb();
             if (!string.IsNullOrEmpty(cachedPatchedObb) && IsReadableQuestObb(cachedPatchedObb))
             {
-                progress.Report("Using cached patched Quest OBB.");
+                progress.Report("Using cached patched Quest OBB for " + QuestObbPatchProfile + ".");
                 return new QuestObbPatchResult
                 {
                     PatchedObb = cachedPatchedObb,
@@ -1292,7 +1299,7 @@ namespace AfterTheFallVRModKit.Manager
                 };
             }
 
-            progress.Report("No cached patched Quest OBB found; creating one.");
+            progress.Report("No cached patched Quest OBB found for " + QuestObbPatchProfile + "; creating one.");
             return CreatePatchedQuestObbFromQuest(progress);
         }
 
@@ -1302,7 +1309,7 @@ namespace AfterTheFallVRModKit.Manager
             Directory.CreateDirectory(outputDir);
 
             var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-            var patchedObb = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(QuestBloodlessObbName) + "-" + stamp + ".obb");
+            var patchedObb = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(QuestBloodlessObbName) + "-" + QuestObbPatchProfile + "-" + stamp + ".obb");
             var reportCsv = Path.Combine(outputDir, "obb-patch-report-" + stamp + ".csv");
             var reportRows = new List<QuestObbPatchReportRow>();
 
@@ -1362,6 +1369,9 @@ namespace AfterTheFallVRModKit.Manager
             }
 
             var builder = new StringBuilder();
+            builder.AppendLine("Patch profile:");
+            builder.AppendLine(QuestObbPatchProfile);
+            builder.AppendLine();
             builder.AppendLine("Patched OBB:");
             builder.AppendLine(result.PatchedObb);
             builder.AppendLine();
@@ -1379,13 +1389,32 @@ namespace AfterTheFallVRModKit.Manager
             }
 
             var patchedObbSize = new FileInfo(result.PatchedObb).Length;
-            var remoteObbSize = GetRemoteFileSize(adb, QuestObbRemotePath);
-            if (remoteObbSize == patchedObbSize)
+            var patchedObbSha256 = ComputeSha256FileHex(result.PatchedObb);
+            builder.AppendLine("Local patched SHA-256:");
+            builder.AppendLine(patchedObbSha256);
+            builder.AppendLine();
+
+            progress.Report("Checking installed Quest OBB hash...");
+            var remoteObbSha256 = TryGetRemoteFileSha256(adb, QuestObbRemotePath);
+            if (!string.IsNullOrEmpty(remoteObbSha256))
             {
-                progress.Report("Quest OBB already matches cached patched size; skipping push.");
-                builder.AppendLine("Quest OBB already matches cached patched size.");
-                builder.AppendLine("Skipped backup and push.");
-                return builder.ToString();
+                builder.AppendLine("Installed Quest OBB SHA-256:");
+                builder.AppendLine(remoteObbSha256);
+                builder.AppendLine();
+
+                if (string.Equals(remoteObbSha256, patchedObbSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    progress.Report("Quest OBB already matches patched SHA-256; skipping push.");
+                    builder.AppendLine("Quest OBB already matches patched SHA-256.");
+                    builder.AppendLine("Skipped backup and push.");
+                    return builder.ToString();
+                }
+            }
+            else
+            {
+                builder.AppendLine("Installed Quest OBB SHA-256:");
+                builder.AppendLine("Unavailable; pushing patched OBB.");
+                builder.AppendLine();
             }
 
             progress.Report("Stopping Quest game package...");
@@ -2074,6 +2103,29 @@ namespace AfterTheFallVRModKit.Manager
             return 0;
         }
 
+        private static string TryGetRemoteFileSha256(string adb, string remoteFile)
+        {
+            try
+            {
+                var quotedRemoteFile = QuoteShellArgument(remoteFile);
+                var command =
+                    "if command -v sha256sum >/dev/null 2>&1; then sha256sum " + quotedRemoteFile + "; " +
+                    "elif command -v toybox >/dev/null 2>&1; then toybox sha256sum " + quotedRemoteFile + "; " +
+                    "else echo ''; fi";
+                var output = RunAdbShell(adb, command, 900000);
+                var match = Regex.Match(output ?? string.Empty, @"\b[0-9a-fA-F]{64}\b");
+                if (match.Success)
+                {
+                    return match.Value.ToLowerInvariant();
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
         private static void EnsureAdbDevice(string adb)
         {
             var devices = RunProcess(adb, "devices -l", 15000);
@@ -2177,6 +2229,11 @@ namespace AfterTheFallVRModKit.Manager
                 text = SetQuestObbFieldNumber(text, entryName, field, "0.0", reportRows);
             }
 
+            if (Array.IndexOf(QuestZombieSkinCollectionObbEntries, entryName) >= 0)
+            {
+                text = PatchQuestZombieSkinCollectionText(text, entryName, reportRows);
+            }
+
             return text;
         }
 
@@ -2204,6 +2261,17 @@ namespace AfterTheFallVRModKit.Manager
                 text = SetQuestObbFieldNumber(text, entryName, field, "0.0", reportRows);
             }
 
+            return text;
+        }
+
+        private static string PatchQuestZombieSkinCollectionText(string text, string entryName, List<QuestObbPatchReportRow> reportRows)
+        {
+            text = SetQuestObbScopedNumberIfPresent(text, entryName, "colorMultiplier", "r", "0.6", 900, reportRows);
+            text = SetQuestObbScopedNumberIfPresent(text, entryName, "colorMultiplier", "g", "0.8", 900, reportRows);
+            text = SetQuestObbScopedNumberIfPresent(text, entryName, "colorMultiplier", "b", "1.0", 900, reportRows);
+            text = SetQuestObbScopedNumberIfPresent(text, entryName, "colorMultiplier", "x", "0.6", 900, reportRows);
+            text = SetQuestObbScopedNumberIfPresent(text, entryName, "colorMultiplier", "y", "0.8", 900, reportRows);
+            text = SetQuestObbScopedNumberIfPresent(text, entryName, "colorMultiplier", "z", "1.0", 900, reportRows);
             return text;
         }
 
@@ -2250,6 +2318,40 @@ namespace AfterTheFallVRModKit.Manager
                 text = text.Remove(absoluteValueIndex, oldValue.Length).Insert(absoluteValueIndex, paddedValue);
                 position = scopeIndex + scopeNeedle.Length;
                 count++;
+            }
+
+            reportRows.Add(new QuestObbPatchReportRow(entryName, scopeFieldName + "." + valueFieldName, count));
+            return text;
+        }
+
+        private static string SetQuestObbScopedNumberIfPresent(string text, string entryName, string scopeFieldName, string valueFieldName, string newValue, int window, List<QuestObbPatchReportRow> reportRows)
+        {
+            var scopeNeedle = "\"" + scopeFieldName + "\"";
+            var regex = new Regex("(\"" + Regex.Escape(valueFieldName) + "\"\\s*:\\s*)(-?\\d+(?:\\.\\d+)?)");
+            var position = 0;
+            var count = 0;
+
+            while (true)
+            {
+                var scopeIndex = text.IndexOf(scopeNeedle, position, StringComparison.Ordinal);
+                if (scopeIndex < 0)
+                {
+                    break;
+                }
+
+                var segmentLength = Math.Min(window, text.Length - scopeIndex);
+                var segment = text.Substring(scopeIndex, segmentLength);
+                var match = regex.Match(segment);
+                if (match.Success)
+                {
+                    var oldValue = match.Groups[2].Value;
+                    var paddedValue = NewPaddedQuestObbValue(oldValue, newValue);
+                    var absoluteValueIndex = scopeIndex + match.Groups[2].Index;
+                    text = text.Remove(absoluteValueIndex, oldValue.Length).Insert(absoluteValueIndex, paddedValue);
+                    count++;
+                }
+
+                position = scopeIndex + scopeNeedle.Length;
             }
 
             reportRows.Add(new QuestObbPatchReportRow(entryName, scopeFieldName + "." + valueFieldName, count));
@@ -3638,6 +3740,22 @@ namespace AfterTheFallVRModKit.Manager
             using (var sha256 = SHA256.Create())
             {
                 return Convert.ToBase64String(sha256.ComputeHash(bytes));
+            }
+        }
+
+        private static string ComputeSha256FileHex(string path)
+        {
+            using (var sha256 = SHA256.Create())
+            using (var stream = File.OpenRead(path))
+            {
+                var hash = sha256.ComputeHash(stream);
+                var builder = new StringBuilder(hash.Length * 2);
+                foreach (var value in hash)
+                {
+                    builder.Append(value.ToString("x2"));
+                }
+
+                return builder.ToString();
             }
         }
 

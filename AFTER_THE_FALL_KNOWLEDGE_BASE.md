@@ -189,6 +189,7 @@ Patch only OBB data:
 - Empty blood/decal/gib texture arrays.
 - Set zombie death blood-pool size and spawn duration to `0.0`.
 - Set impact, mutilation, critical-hit, and gibbing numeric fields to `0`.
+- V3 also tints `ZombieSkinCollection` color multipliers.
 
 Goal:
 - Keep online auth intact.
@@ -202,6 +203,10 @@ Status:
 - V2 also empties known blood texture arrays.
 - V2 headset test: no-ground-blood patch worked.
 - V2 headset test: zombie visuals did not change.
+- V3 local OBB patch verified readable and length-preserving.
+- V3 patched `ZombieSkinCollection` tint rows: 6 in typed table, 10 in plain table.
+- V3 manager uses `bloodless-v3` cache profile.
+- V3 install skips push only on matching remote SHA-256, not file size.
 - Local V2 OBB verified readable.
 - Official Vertigo APK restored on headset.
 - V1 patched OBB installed on headset.
@@ -211,10 +216,12 @@ Status:
 - Headset gameplay test still needed.
 
 Limits:
-- Quest Nephew Mode visuals are not implemented.
+- Quest Nephew Mode is tint-only so far.
 - PC zombie replacement uses runtime Harmony hooks.
 - Quest OBB-only patch cannot create runtime proxy geometry.
 - Player/NPC prefab redirects look rig-incompatible.
 - Quest OBB has enemy skins, not a clean training-dummy skin.
+- Quest doorbell wave sound is not implemented.
+- Quest audio path likely needs FMOD event/data redirection.
 - Current saved settings show `IsGoreEnabled=true`.
 - Internal PlayerPrefs are not editable by stock ADB.

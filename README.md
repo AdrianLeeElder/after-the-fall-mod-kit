@@ -19,7 +19,7 @@ This repository contains:
 - Run an experimental retained `ServerGame` cleanup after returning to the hub.
 - Toggle BepInEx and vrperfkit by enabling or disabling their loader DLLs.
 - Set the Steam `-disconnectTimeout` launch option from the manager UI.
-- Detect a connected Quest through ADB and build an OBB-only V2 blood/decal/gore tuning patch for the verified Quest release.
+- Detect a connected Quest through ADB and build an OBB-only Quest patch for blood/decal/gore tuning and conservative Nephew Mode skin tinting.
 - Install the patched Quest OBB through ADB without modifying or re-signing the official APK.
 
 ## End User Install
@@ -105,10 +105,11 @@ The manager includes `ADB Status`, `Create Quest OBB`, and `Install Quest OBB` b
 - Pulls `main.38148.com.vertigogames.atf.obb`.
 - Patches known blood, decal, gib, zombie death blood-pool, impact, and mutilation tuning tables.
 - Empties known blood/decal/gib texture arrays to reduce ground blood even when gore settings are restored from saved data.
+- Applies a conservative Quest Nephew Mode tint to serialized zombie skin collections while preserving official enemy rigs, animation, hitboxes, crawling, limb behavior, and online auth identity.
 - Keeps the official APK untouched so Meta/Vertigo auth identity is preserved.
 - Backs up the headset OBB to `/sdcard/Download/AfterTheFallVRModKit/obb-backup` before pushing the patched OBB.
 
-PC Nephew Mode uses runtime BepInEx/Harmony hooks. The current PC path keeps the real animated zombie renderer active so size, hitboxes, crawling, limb loss, and ragdoll behavior stay game-driven, then overrides the renderer's bland plastic skin properties. The current Quest online path is OBB-only and does not implement the PC zombie replacement, because re-signing or native code changes broke online auth during testing.
+PC Nephew Mode uses runtime BepInEx/Harmony hooks. The current PC path keeps the real animated zombie renderer active so size, hitboxes, crawling, limb loss, and ragdoll behavior stay game-driven, then overrides the renderer's bland plastic skin properties. The current Quest online path is OBB-only: it can tune serialized data and skin tinting, but does not run the PC Harmony hooks because re-signing or native APK changes broke online auth during testing.
 
 The earlier APK patch route is not recommended for online Quest play because re-signing the APK caused game auth error `10050`. The standalone OBB patch script is also available:
 

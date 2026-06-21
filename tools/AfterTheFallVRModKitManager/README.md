@@ -15,9 +15,9 @@ It can:
   - `CleanupRetainedServerGame`
 - Set or remove the Steam `-disconnectTimeout` launch option for app `751630`.
 - Toggle vrperfkit when `dxgi.dll` / `dxgi.dll.disabled` is present, or install it when a package payload is bundled.
-- Check ADB status and create a V2 bloodless patched Quest OBB artifact for the verified `com.vertigogames.atf` Quest release.
+- Check ADB status and create a bloodless plus conservative Nephew Mode tinted Quest OBB artifact for the verified `com.vertigogames.atf` Quest release.
 - Install the patched Quest OBB with a remote backup while leaving the official APK untouched.
-- Reuse the newest cached patched Quest OBB and skip install when the headset already matches it.
+- Reuse the newest cached patched Quest OBB for the current patch profile and skip install only when the headset SHA-256 already matches it.
 - Show Quest OBB pull/push transfer percent, speed, and ETA during long ADB operations.
 - Keep PC-only Nephew Mode visuals separate from Quest OBB patching; Quest online auth requires the official APK signature.
 

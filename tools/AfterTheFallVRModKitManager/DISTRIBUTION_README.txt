@@ -40,7 +40,7 @@ Toggles:
   Adds or removes Steam launch option -disconnectTimeout. The default 30 second setting writes -disconnectTimeout 30000.
 
 - ADB Status / Create Quest OBB / Install Quest OBB
-  Detects a connected Quest, builds an OBB-only V2 blood/decal/gore tuning patch for the verified Quest release, and can install it through ADB. Installation reuses the newest cached patched OBB when possible and skips the push when the headset already matches it. It backs up the current headset OBB before replacing it. Long OBB pulls and pushes show percent, speed, and ETA. The APK is not modified. PC Nephew Mode visuals are runtime hooks and are not part of the Quest OBB patch.
+  Detects a connected Quest, builds an OBB-only blood/decal/gore tuning patch plus conservative Quest Nephew Mode skin tinting, and installs it through ADB. Installation reuses the newest cached patched OBB for the current patch profile and skips the push only when the headset OBB SHA-256 already matches. It backs up the current headset OBB before replacing it. Long OBB pulls and pushes show percent, speed, and ETA. The APK is not modified.
 
 Feature toggles are written to:
 

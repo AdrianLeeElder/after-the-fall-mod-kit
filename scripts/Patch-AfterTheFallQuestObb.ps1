@@ -28,6 +28,11 @@ $ZombieDeathSettingsEntries = @(
     'assets/bin/Data/5f8e8990ebe7b194c9b3f71f884e565d'
 )
 
+$ZombieSkinCollectionEntries = @(
+    'assets/bin/Data/20d7b4b282b28ea43aa03ab4dddd00f0',
+    'assets/bin/Data/998e200d03c67f34b90e8ca5b36a7991'
+)
+
 $ImpactSettingsEntries = @(
     'assets/bin/Data/09772e8d18fb0ba4c922b384b54826a7',
     'assets/bin/Data/2f43c97460f90344e890c1ab531d42eb',
@@ -142,6 +147,45 @@ function Set-ScopedNumber {
         $Text = $Text.Remove($absoluteValueIndex, $oldValue.Length).Insert($absoluteValueIndex, $newPaddedValue)
         $position = $scopeIndex + $scopeNeedle.Length
         $count++
+    }
+
+    Add-ReportRow -EntryName $EntryName -FieldName "$ScopeFieldName.$ValueFieldName" -Count $count
+    return $Text
+}
+
+function Set-ScopedNumberIfPresent {
+    param(
+        [string]$Text,
+        [string]$EntryName,
+        [string]$ScopeFieldName,
+        [string]$ValueFieldName,
+        [string]$NewValue,
+        [int]$Window = 900
+    )
+
+    $scopeNeedle = '"' + $ScopeFieldName + '"'
+    $pattern = '("' + [regex]::Escape($ValueFieldName) + '"\s*:\s*)(-?\d+(?:\.\d+)?)'
+    $position = 0
+    $count = 0
+
+    while ($true) {
+        $scopeIndex = $Text.IndexOf($scopeNeedle, $position, [StringComparison]::Ordinal)
+        if ($scopeIndex -lt 0) {
+            break
+        }
+
+        $segmentLength = [Math]::Min($Window, $Text.Length - $scopeIndex)
+        $segment = $Text.Substring($scopeIndex, $segmentLength)
+        $match = [regex]::Match($segment, $pattern)
+        if ($match.Success) {
+            $oldValue = $match.Groups[2].Value
+            $newPaddedValue = New-PaddedValue -OldValue $oldValue -NewValue $NewValue
+            $absoluteValueIndex = $scopeIndex + $match.Groups[2].Index
+            $Text = $Text.Remove($absoluteValueIndex, $oldValue.Length).Insert($absoluteValueIndex, $newPaddedValue)
+            $count++
+        }
+
+        $position = $scopeIndex + $scopeNeedle.Length
     }
 
     Add-ReportRow -EntryName $EntryName -FieldName "$ScopeFieldName.$ValueFieldName" -Count $count
@@ -374,6 +418,25 @@ function Set-ImpactSettings {
         $Text = Set-FieldNumber -Text $Text -EntryName $EntryName -FieldName $field -NewValue '0.0'
     }
 
+    if ($ZombieSkinCollectionEntries -contains $EntryName) {
+        $Text = Set-ZombieSkinCollection -Text $Text -EntryName $EntryName
+    }
+
+    return $Text
+}
+
+function Set-ZombieSkinCollection {
+    param(
+        [string]$Text,
+        [string]$EntryName
+    )
+
+    $Text = Set-ScopedNumberIfPresent -Text $Text -EntryName $EntryName -ScopeFieldName 'colorMultiplier' -ValueFieldName 'r' -NewValue '0.6'
+    $Text = Set-ScopedNumberIfPresent -Text $Text -EntryName $EntryName -ScopeFieldName 'colorMultiplier' -ValueFieldName 'g' -NewValue '0.8'
+    $Text = Set-ScopedNumberIfPresent -Text $Text -EntryName $EntryName -ScopeFieldName 'colorMultiplier' -ValueFieldName 'b' -NewValue '1.0'
+    $Text = Set-ScopedNumberIfPresent -Text $Text -EntryName $EntryName -ScopeFieldName 'colorMultiplier' -ValueFieldName 'x' -NewValue '0.6'
+    $Text = Set-ScopedNumberIfPresent -Text $Text -EntryName $EntryName -ScopeFieldName 'colorMultiplier' -ValueFieldName 'y' -NewValue '0.8'
+    $Text = Set-ScopedNumberIfPresent -Text $Text -EntryName $EntryName -ScopeFieldName 'colorMultiplier' -ValueFieldName 'z' -NewValue '1.0'
     return $Text
 }
 
