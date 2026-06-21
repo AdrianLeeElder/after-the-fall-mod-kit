@@ -14,6 +14,28 @@ $csc = 'C:\Program Files\dotnet\sdk\3.1.101\Roslyn\bincore\csc.dll'
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
+if (-not (Test-Path -LiteralPath $csc)) {
+    $sdk = & dotnet --list-sdks |
+        ForEach-Object {
+            if ($_ -match '^(?<version>\S+)\s+\[(?<root>.+)\]') {
+                [pscustomobject]@{
+                    Version = [version]($matches.version -replace '-.*$', '')
+                    Path = Join-Path $matches.root $matches.version
+                }
+            }
+        } |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+
+    if ($sdk) {
+        $csc = Join-Path $sdk.Path 'Roslyn\bincore\csc.dll'
+    }
+}
+
+if (-not (Test-Path -LiteralPath $csc)) {
+    throw "Could not find Roslyn compiler csc.dll. Install a .NET SDK or update build.ps1."
+}
+
 $refs = @(
     (Join-Path $dotnet 'System.Private.CoreLib.dll'),
     (Join-Path $dotnet 'System.Runtime.dll'),

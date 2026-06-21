@@ -17,6 +17,9 @@ $installerExe = Join-Path $OutputRoot 'AfterTheFallVRModKitInstaller.exe'
 $packageZip = Join-Path $OutputRoot 'AfterTheFallVRModKit.zip'
 
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $pluginRoot 'build.ps1') -GameRoot $GameRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "Plugin build failed with exit code $LASTEXITCODE"
+}
 
 foreach ($path in @($packageRoot, $payloadRoot)) {
     if (Test-Path -LiteralPath $path) {
@@ -72,6 +75,9 @@ if ($tar) {
 }
 
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $managerRoot 'build.ps1') -EmbeddedPayloadZip $payloadZip
+if ($LASTEXITCODE -ne 0) {
+    throw "Manager build failed with exit code $LASTEXITCODE"
+}
 
 New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
 Copy-Item -LiteralPath (Join-Path $managerRoot 'bin\Release\AfterTheFallVRModKitManager.exe') -Destination $installerExe -Force
