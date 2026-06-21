@@ -13,10 +13,14 @@ This repository contains:
 ## Current Features
 
 - Disable the game's built-in VOIP handlers for players using external voice chat.
-- Suppress client-side blood, decal, gib, and mutilation visual handlers.
+- Suppress client-side blood, decal, gib, mutilation, and known blood particle effects.
+- Replace the harsh horde wave-start stinger with a short doorbell-like tone.
+- Enable PC-only Nephew Mode enemy visuals that keep the real animated enemy renderer and apply a bland plastic skin.
 - Run an experimental retained `ServerGame` cleanup after returning to the hub.
 - Toggle BepInEx and vrperfkit by enabling or disabling their loader DLLs.
-- Detect a connected Quest through ADB and inspect the installed Quest APK for matching IL2CPP patch targets.
+- Set the Steam `-disconnectTimeout` launch option from the manager UI.
+- Detect a connected Quest through ADB and build an OBB-only V2 blood/decal/gore tuning patch for the verified Quest release.
+- Install the patched Quest OBB through ADB without modifying or re-signing the official APK.
 
 ## End User Install
 
@@ -26,6 +30,8 @@ This repository contains:
 4. Pick the desired toggles and click `Apply`.
 
 Close After The Fall before applying file changes. Feature settings take effect the next time the game starts.
+
+The network disconnect timeout control writes Steam launch options for app `751630`. The default experimental value is `30` seconds, which becomes `-disconnectTimeout 30000`.
 
 ## Build From Source
 
@@ -83,19 +89,32 @@ Supported feature flags:
 [Features]
 DisableInGameVoip = true
 SuppressClientBloodAndGore = true
+DoorbellWaveSound = true
+ComfortEnemyVisuals = false
 CleanupRetainedServerGame = true
 ```
 
-## Quest APK Support
+`ComfortEnemyVisuals` is the compatibility config key for Nephew Mode.
 
-The manager includes `ADB Status` and `Patch Quest APK` buttons. The current Quest path is a safe preflight:
+## Quest OBB Support
+
+The manager includes `ADB Status`, `Create Quest OBB`, and `Install Quest OBB` buttons. The Quest path currently supports the verified Quest build `versionCode=38148` / `versionName=1.38147.41947`:
 
 - Detects an authorized ADB device.
 - Finds the Quest package `com.vertigogames.atf`.
-- Pulls the base APK into the user's Documents folder.
-- Confirms the APK is Unity IL2CPP and checks for the same target names used by the PC plugin.
+- Pulls `main.38148.com.vertigogames.atf.obb`.
+- Patches known blood, decal, gib, zombie death blood-pool, impact, and mutilation tuning tables.
+- Empties known blood/decal/gib texture arrays to reduce ground blood even when gore settings are restored from saved data.
+- Keeps the official APK untouched so Meta/Vertigo auth identity is preserved.
+- Backs up the headset OBB to `/sdcard/Download/AfterTheFallVRModKit/obb-backup` before pushing the patched OBB.
 
-It does not yet modify, sign, or reinstall the APK. The Quest build requires Android ARM64 `libil2cpp.so` patching, then APK resign/reinstall handling. That should be treated carefully because changing the APK signature can affect store updates, saved data, entitlement checks, and online play.
+PC Nephew Mode uses runtime BepInEx/Harmony hooks. The current PC path keeps the real animated zombie renderer active so size, hitboxes, crawling, limb loss, and ragdoll behavior stay game-driven, then overrides the renderer's bland plastic skin properties. The current Quest online path is OBB-only and does not implement the PC zombie replacement, because re-signing or native code changes broke online auth during testing.
+
+The earlier APK patch route is not recommended for online Quest play because re-signing the APK caused game auth error `10050`. The standalone OBB patch script is also available:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Patch-AfterTheFallQuestObb.ps1
+```
 
 ## Notes
 

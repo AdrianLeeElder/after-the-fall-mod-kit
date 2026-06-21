@@ -2,9 +2,12 @@
 captures/
 quest-apk/
 AFTER_THE_FALL_PERF_NOTES.md
+!AFTER_THE_FALL_KNOWLEDGE_BASE.md
 
 # Built packages and extracted dependencies
 dist/
+dist-v*/
+dist-fixed/
 downloads/
 vendor/
 
