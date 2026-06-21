@@ -1,5 +1,6 @@
 param(
     [string]$GameRoot = 'C:\Program Files (x86)\Steam\steamapps\common\After The Fall',
+    [string]$PrebuiltPluginDll,
     [string]$OutputRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) 'dist')
 )
 
@@ -15,10 +16,21 @@ $vrPerfKitPayload = Join-Path $payloadRoot 'vrperfkit'
 $payloadZip = Join-Path $OutputRoot 'AfterTheFallVRModKitPayload.zip'
 $installerExe = Join-Path $OutputRoot 'AfterTheFallVRModKitInstaller.exe'
 $packageZip = Join-Path $OutputRoot 'AfterTheFallVRModKit.zip'
+$pluginDll = Join-Path $pluginRoot 'bin\AfterTheFallVRModKit.dll'
 
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $pluginRoot 'build.ps1') -GameRoot $GameRoot
-if ($LASTEXITCODE -ne 0) {
-    throw "Plugin build failed with exit code $LASTEXITCODE"
+if ($PrebuiltPluginDll) {
+    if (-not (Test-Path -LiteralPath $PrebuiltPluginDll)) {
+        throw "Prebuilt plugin DLL not found: $PrebuiltPluginDll"
+    }
+
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $pluginDll) | Out-Null
+    Copy-Item -LiteralPath $PrebuiltPluginDll -Destination $pluginDll -Force
+    Write-Host "Using prebuilt plugin DLL: $PrebuiltPluginDll"
+} else {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $pluginRoot 'build.ps1') -GameRoot $GameRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "Plugin build failed with exit code $LASTEXITCODE"
+    }
 }
 
 foreach ($path in @($packageRoot, $payloadRoot)) {
@@ -35,7 +47,7 @@ foreach ($path in @($payloadZip, $installerExe, $packageZip)) {
 
 New-Item -ItemType Directory -Force -Path $payloadRoot | Out-Null
 
-Copy-Item -LiteralPath (Join-Path $pluginRoot 'bin\AfterTheFallVRModKit.dll') -Destination (Join-Path $payloadRoot 'AfterTheFallVRModKit.dll') -Force
+Copy-Item -LiteralPath $pluginDll -Destination (Join-Path $payloadRoot 'AfterTheFallVRModKit.dll') -Force
 
 $bepInExSource = Join-Path $repoRoot 'downloads\bepinex_extract'
 if (-not (Test-Path -LiteralPath $bepInExSource)) {

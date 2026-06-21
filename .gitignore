@@ -6,6 +6,7 @@ AFTER_THE_FALL_PERF_NOTES.md
 
 # Built packages and extracted dependencies
 dist/
+dist-*/
 dist-v*/
 dist-fixed/
 downloads/
@@ -19,6 +20,9 @@ obj/
 *.dll
 *.exe
 *.zip
+
+# Checked in so GitHub Actions can package releases without a local game install.
+!release/AfterTheFallVRModKit.dll
 
 # Logs
 *.log

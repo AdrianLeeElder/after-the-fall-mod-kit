@@ -28,7 +28,7 @@ jobs:
 
       - name: Build installer
         shell: pwsh
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-AfterTheFallVRModKitPackage.ps1 -GameRoot .\downloads\bepinex_extract
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-AfterTheFallVRModKitPackage.ps1 -GameRoot .\downloads\bepinex_extract -PrebuiltPluginDll .\release\AfterTheFallVRModKit.dll
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
